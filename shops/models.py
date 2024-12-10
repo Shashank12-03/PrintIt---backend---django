@@ -4,28 +4,23 @@ from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
 # Create your models here.
 
-class Service(models.Model):
-    facility = models.CharField(max_length=100,blank=True,default=None)
-    price = models.DecimalField(max_digits=4,decimal_places=2)
-    
+
 class Location(models.Model):
-    address = models.CharField(max_length=400,default=None,required=True)
+    address = models.CharField(max_length=400,default=None)
     location = models.PointField(geography=True,default=None)
     updated_at = models.DateTimeField(auto_now=True)
 
 class Images(models.Model):
-    photo = models.ImageField(upload_to='media/shops')
-    uploaded_at = models.DateTimeField(auto_now_add=True)
+    images = ArrayField(models.CharField(max_length=200), blank=True, null=True)
+    uploaded_at = models.DateTimeField(auto_now_add=True,null=True,blank=True)
     
 
 class Shop(CustomUserModel):
-    email = models.EmailField(max_length=100,required=True,unique=True)
     name = models.CharField(max_length=200)
-    gstIn = models.CharField(max_length=50,unique=True)
-    rating = models.DecimalField(max_digits=1,default=3)
+    rating =models.DecimalField(max_digits=5, decimal_places=1,default=3)
     payment_modes = ArrayField(
-        models.CharField(), blank=True, default=list
+        models.CharField(), blank=True, default=list,null=True
     )
-    images = models.ForeignKey(Images,on_delete=models.CASCADE, related_name='photos')
-    services = models.ForeignKey(Service,on_delete=models.CASCADE)
-    location = models.ForeignKey(Location,on_delete=models.CASCADE)
+    facilities = models.JSONField(default=dict,null=True, blank=True)
+    images = models.ForeignKey(Images,on_delete=models.CASCADE, related_name='photos',null=True)
+    location = models.ForeignKey(Location,on_delete=models.CASCADE,null=True)

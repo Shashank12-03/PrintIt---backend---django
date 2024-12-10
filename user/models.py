@@ -10,6 +10,8 @@ class CustomUserManager(BaseUserManager):
         
         extra_fields.setdefault('is_active',True)
         user = self.model(email = self.normalize_email(email),**extra_fields)
+        if password is not None:
+            user.set_password(password)
         user.save(using=self._db)
         
         return user
@@ -28,7 +30,7 @@ class CustomUserModel(AbstractBaseUser):
     is_superuser = models.BooleanField(default=False)
     is_staff = models.BooleanField(default=True)
     
-    USERNAME_FIELD = ['email']
+    USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
     
     
@@ -48,4 +50,6 @@ class User(CustomUserModel):
     def __str__(self):
         return self.name
     
-    
+
+# user interaction model
+# stores user interacted with shops document shared time stamp 
