@@ -11,7 +11,7 @@ class ShopService():
         
         if shop is None:
             try:
-                shop = Shop.objects.filter(shop_id).first()
+                shop = Shop.objects.filter(id = shop_id).first()
                 cache.set(cache_key,shop,timeout=3600)
                 
             except Shop.DoesNotExist as e:
@@ -28,7 +28,7 @@ class ShopService():
         
         if shop is None:
             try:
-                shop = Shop.objects.filter(email).first()
+                shop = Shop.objects.filter(email=email).first()
                 cache.set(cache_key,shop,timeout=3600)
                 
             except Shop.DoesNotExist as e:

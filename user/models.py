@@ -41,8 +41,7 @@ class CustomUserModel(AbstractBaseUser):
     
 
 class User(CustomUserModel):
-    gid = models.CharField(max_length=20,primary_key=True,default=None,unique=True)
-    name = models.CharField(max_length=100)
+    name = models.CharField(max_length=100,blank=True)
     mobile_no = models.CharField(max_length=10)
     profile_photo = models.ImageField(upload_to='media/users')
     uploaded_at = models.DateTimeField(auto_now_add=True)

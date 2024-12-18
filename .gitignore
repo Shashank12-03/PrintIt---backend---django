@@ -3,3 +3,5 @@ client_secret_801604051428-1mhbtppni5kfpdlpbtfg8nr7b3jpgpuv.apps.googleuserconte
 .env
 venv
 */__pycache__/
+shops/services/__pycache__
+user/services/__pycache__

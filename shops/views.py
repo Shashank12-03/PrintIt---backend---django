@@ -16,6 +16,7 @@ from rest_framework import serializers
 from rest_framework_simplejwt.exceptions import TokenError 
 from rest_framework_simplejwt.tokens import RefreshToken
 from .services.shop_services import ShopService 
+from django.contrib.gis.db.models.functions import Distance
 from django.core.cache import cache
 # Create your views here.
 class RegisterShopView(APIView):
@@ -80,7 +81,7 @@ class CheckLoginView(APIView):
         print(request.user)
         return Response({'message':'welcome to print it!!! lets start printing'})
     
-class GetShopDetailedView(APIView):
+class AddShopDetailedView(APIView):
     
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
@@ -92,53 +93,35 @@ class GetShopDetailedView(APIView):
         name = request.data.get('name')
         payment_modes = request.data.get('payment_modes')
         services = request.data.get('services')
-        
-        shop = ShopService.get_shop_by_id(request.user.id)
-        
-        if shop is not None:
-            try:
-                shop.name = name
-                shop.payment_modes = payment_modes
-                shop.facilities = services
-                shop.save()
-                print(shop)
-                return Response({'message':'shop name, payment modes and services saved!!!'},status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({'message':'unable to make changes','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
-        else:
-            
-            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
-
-
-class SetLocationView(APIView):
-    
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
-    
-    def post(self, request):
         address = request.data.get('address')
         latitude = request.data.get('latitude')
         longitude = request.data.get('longitude')
+        # images = request.FILES.getlist('images')
         
-            
+        
+        
         shop = ShopService.get_shop_by_id(request.user.id)
         
-        if shop is not None:
-            try:
-                location, created = Location.objects.get_or_create(
-                    address=address, 
-                    location=Point(float(longitude), float(latitude)) 
-                )
-                shop.location = location
-                shop.save()
-                print(shop)
-                return Response({'message':'shop location saved!!!'},status=status.HTTP_200_OK)
-            except Exception as e:
-                return Response({'message':'unable to save location','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
-        else:
-            
-            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_404_NOT_FOUND)
+        if shop is None:
+            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
         
+        try:
+            location, _ = Location.objects.get_or_create(
+                address=address, 
+                geometry=Point(float(longitude), float(latitude)) 
+            )
+            shop.name = name
+            shop.payment_modes = payment_modes
+            shop.facilities = services
+            
+            shop.location = location
+            shop.save()
+
+            return Response({'message':'shop details saved!!!'},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message':'unable to make changes','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+
+
 
 class AddImagesView(APIView):
     
@@ -192,6 +175,7 @@ class SignoutView(APIView):
         
         try:
             token = RefreshToken(refresh_token)
+            print(token)
             token.blacklist()
             return Response({'message':'sign out'},status=status.HTTP_200_OK)
         except Exception as e:
@@ -221,6 +205,73 @@ class DeleteAccountView(APIView):
         except Exception as e:
             return Response({'message':'error cant delete shop','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
 
+class GetShopView(APIView):
+    
+    
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    def get(self,request,id):
+        
+        shop = ShopService.get_shop_by_id(id)
+        if shop is None:
+            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
+        
+        try:
+            print(shop.location)
+            data = {
+                'shop_id':id,
+                'shop_name':shop.name,
+                'shop_address': shop.location.address,
+                # add image
+                'location':{
+                    "latitude": shop.location.geometry.y,
+                    "longitude": shop.location.geometry.x
+                } if shop.location else None,
+                'shop':shop.rating,
+                'shop_facilites':shop.facilities,
+                'shop_paymentmodes':shop.payment_modes
+            }
+            
+            return Response({'shop':data},status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+
+class GetShopListView(APIView):
+    
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    def get(self,request):
+        
+        longitude = request.data.get('longitude')
+        latitude = request.data.get('latitude')
+        
+        if not longitude or not latitude:
+            return Response({'message':'location required'},status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+                
+            user_location = Point(float(longitude), float(latitude), srid=4326)
+            shops = Shop.objects.annotate(
+                distance=Distance('location__geometry', user_location)
+            ).order_by('distance')
+            
+            shop_list = []
+            for shop in shops:
+                shop_data = {
+                    'shop_id': shop.id, 
+                    'shop_name': shop.name,
+                    'shop_rating': shop.rating,
+                    # addd images
+                    'distance_km': shop.distance.km if shop.distance else None
+                }
+                shop_list.append(shop_data)
+            return Response({'shop_list':shop_list},status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
 
 # forgot password
 # update account

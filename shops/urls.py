@@ -2,9 +2,10 @@ from .views import (
     RegisterShopView,
     GetEmailTokenView,
     CheckLoginView,
-    SetLocationView,
+    GetShopListView,
+    GetShopView,
     AddImagesView,
-    GetShopDetailedView,
+    AddShopDetailedView,
     SignInView,
     SignoutView,
 )
@@ -16,7 +17,7 @@ urlpatterns = [
     path("sign-in", SignInView.as_view()),
     path("sign-out", SignoutView.as_view()),
     path("check", CheckLoginView.as_view()),
-    path("add-details", GetShopDetailedView.as_view()),
-    path("add-location", SetLocationView.as_view()),
-    path("add-photos", AddImagesView.as_view()),
+    path("add-details", AddShopDetailedView.as_view()),
+    path("get-shop/<int:id>", GetShopView.as_view()),
+    path("get-shops", GetShopListView.as_view()),
 ]
