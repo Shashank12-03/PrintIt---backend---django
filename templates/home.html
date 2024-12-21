@@ -1,77 +1,40 @@
-{% block content %}
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="referrer" content="strict-origin-when-cross-origin">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="google-signin-client_id" content="801604051428-79nbm29bctir7tul83q0lnlnk439pfn5.apps.googleusercontent.com">
-    <title>Google Sign-In with JWT</title>
-    <link rel="icon" href="https://www.favicon.cc/logo3d/24208.png" type="image/png">
-
-    <script src="https://accounts.google.com/gsi/client" async defer></script>
-</head>
-<body>
-    <h1>Google Sign-In</h1>
-    
-    <div id="g_id_onload"
-        data-client_id="801604051428-79nbm29bctir7tul83q0lnlnk439pfn5.apps.googleusercontent.com"
-        data-context="signin"
-        data-ux_mode="popup"
-        data-callback="handleCredentialResponse"
-        data-nonce=""
-        data-auto_prompt="false">
-    </div>
-
-    <div class="g_id_signin"
-        data-type="standard"
-        data-shape="pill"
-        data-theme="filled_blue"
-        data-text="signin_with"
-        data-size="large"
-        data-logo_alignment="left">
-    </div>
-
-    <script>
-        console.log("Current origin:", window.location.origin);
-
-        function handleCredentialResponse(response) {
-            console.log("Received response from Google Sign-In");
-            const idToken = response.credential;
-            console.log("ID Token:", idToken);
-
-            fetch('http://127.0.0.1:8000/user/login/', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: JSON.stringify({ token: idToken }),
-                credentials: 'include'
-            })
-            .then(response => {
-                console.log("Received response from server");
-                return response.json();
-            })
-            .then(data => {
-                if (data.access) {
-                    console.log("JWT Token:", data.access);
-                    localStorage.setItem('jwt', data.access);
-                    alert('Login successful!');
-                } else {
-                    console.error("Login failed:", data);
-                    alert('Login failed!');
-                }
-            })
-            .catch(error => {
-                console.error('Error:', error);
-                alert('An error occurred during login');
-            });
+    <title>Sign In</title>
+    <style>
+        body {
+            width: 100vw;
+            height: 100vh;
         }
 
-        window.onload = function() {
-            console.log("Page loaded. Google Sign-In should initialize soon.");
-        };
-    </script>
+        .center {
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            width: 400px;
+            padding: 20px;
+            border: 1px solid gray;
+            border-radius: 4px;
+        }
+
+        .title {
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<div class="center">
+    <div class="container">
+        <h1 class="title">Sign in</h1>
+        <a href="https://accounts.google.com/o/oauth2/v2/auth?redirect_uri={{ google_callback_uri }}&prompt=consent&response_type=code&client_id={{ google_client_id }}&scope=openid%20email%20profile&access_type=offline">
+            Sign in with Google
+        </a>
+    </div>
+</div>
 </body>
 </html>
-{% endblock %}

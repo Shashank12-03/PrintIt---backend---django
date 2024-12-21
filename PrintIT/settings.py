@@ -48,7 +48,12 @@ INSTALLED_APPS = [
     'django.contrib.gis',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
-    
+    'allauth.socialaccount',
+    'allauth.socialaccount.providers.google',
+    'dj_rest_auth',
+    'dj_rest_auth.registration',
+    'allauth.account',
+    'allauth',
 ]
 
 MIDDLEWARE = [
@@ -60,6 +65,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
+    'allauth.account.middleware.AccountMiddleware'
 ]
 
 ROOT_URLCONF = 'PrintIT.urls'
@@ -108,6 +114,15 @@ REST_FRAMEWORK = {
     ),
 }
 
+REST_AUTH = {
+    'TOKEN_MODEL': None
+}
+
+REST_AUTH_REGISTER_SERIALIZERS = {
+    "REGISTER_SERIALIZER": "user.serializers.CustomRegisterSerializer",
+}
+
+SITE_ID = 1
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(days=1),  
@@ -140,6 +155,40 @@ AUTHENTICATION_BACKENDS = [
     'shops.backends.ShopAuthenticationBackend',
     # 'user.backends.UserAuthenticationBackend  '
 ]
+
+ACCOUNT_USER_MODEL_USERNAME_FIELD = None
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = "email"
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_UNIQUE_EMAIL = True
+
+load_dotenv()
+
+GOOGLE_OAUTH_CLIENT_ID=os.getenv('GOOGLE_OAUTH_CLIENT_ID')
+GOOGLE_OAUTH_CLIENT_SECRET=os.getenv('GOOGLE_OAUTH_CLIENT_SECRET')
+GOOGLE_OAUTH_CALLBACK_URL=os.getenv('GOOGLE_OAUTH_CALLBACK_URL')
+
+
+SOCIALACCOUNT_PROVIDERS = {
+    'google': {
+        'APP': {
+            'client_id':GOOGLE_OAUTH_CLIENT_ID,
+            'secret':GOOGLE_OAUTH_CLIENT_SECRET,
+            'key': ''
+        },
+        'SCOPE': [
+            'profile',
+            'email',
+        ],
+        'AUTH_PARAMS': {
+            'access_type': 'online',
+        },
+    }
+}
+
+
+LOGIN_REDIRECT_URL = "/"  # Change this to your desired redirect URL
+SOCIALACCOUNT_LOGIN_ON_GET = True
 # Database
 # https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 

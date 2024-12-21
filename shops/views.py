@@ -18,6 +18,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .services.shop_services import ShopService 
 from django.contrib.gis.db.models.functions import Distance
 from django.core.cache import cache
+from user.services.user_services import UserService
 # Create your views here.
 class RegisterShopView(APIView):
     
@@ -166,18 +167,22 @@ class SignoutView(APIView):
     authentication_classes = [JWTAuthentication]
     
     def post(self,request,*args, **kwargs):
-        print(request.user)
         
-        refresh_token = request.headers.get('Authorization')
-        print(refresh_token)
+        refresh_token = request.data.get('refresh_token')
+        
         if not refresh_token:
             return Response({'message':'need refresh token to signout'},status=status.HTTP_400_BAD_REQUEST)
         
         try:
+            
             token = RefreshToken(refresh_token)
             print(token)
             token.blacklist()
-            return Response({'message':'sign out'},status=status.HTTP_200_OK)
+            return Response({'message':'signed out'},status=status.HTTP_200_OK)
+        
+        except TokenError as e:
+            return Response({'message': 'Invalid or expired refresh token', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
         except Exception as e:
             return Response({'message':'unable to sign out','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
 
@@ -213,12 +218,15 @@ class GetShopView(APIView):
     
     def get(self,request,id):
         
+        user = UserService.get_user_by_id(request.user.id)
+        if not user:
+            return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
+        
         shop = ShopService.get_shop_by_id(id)
         if shop is None:
             return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
         
         try:
-            print(shop.location)
             data = {
                 'shop_id':id,
                 'shop_name':shop.name,
@@ -244,6 +252,10 @@ class GetShopListView(APIView):
     authentication_classes = [JWTAuthentication]
     
     def get(self,request):
+        
+        user = UserService.get_user_by_id(request.user.id)
+        if not user:
+            return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
         
         longitude = request.data.get('longitude')
         latitude = request.data.get('latitude')
@@ -273,8 +285,8 @@ class GetShopListView(APIView):
         except Exception as e:
             return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
 
-# forgot password
+# forgot password 
 # update account
-# get shop i,e shopcard shop info get
-# get shops 
+# search shop
+# shop qr 
 # check sign in sign out
