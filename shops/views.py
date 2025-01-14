@@ -82,6 +82,24 @@ class CheckLoginView(APIView):
         print(request.user)
         return Response({'message':'welcome to print it!!! lets start printing'})
     
+    
+class VerifyShopView(APIView):
+    
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    
+    def get(self,request):
+        
+        shop = ShopService.get_shop_by_id(request.user.id)
+        if not shop:
+            return Response({'error':'only shop can print'},status=status.HTTP_401_UNAUTHORIZED)
+        data = {
+            'id':shop.id,
+            'name':shop.name,
+        }
+        return Response({'message':'user', 'shop':data},status=status.HTTP_200_OK)
+
 class AddShopDetailedView(APIView):
     
     permission_classes = [IsAuthenticated]
@@ -290,3 +308,5 @@ class GetShopListView(APIView):
 # search shop
 # shop qr 
 # check sign in sign out
+# shop opened tag need to alter tag
+

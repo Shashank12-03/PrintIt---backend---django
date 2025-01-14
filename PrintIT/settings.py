@@ -14,7 +14,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from datetime import timedelta
 import os
-
+import urllib.parse as urlparse
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -45,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
     'user',
     'shops',
+    'interactions',
     'django.contrib.gis',
     'corsheaders',
     'rest_framework_simplejwt.token_blacklist',
@@ -203,13 +204,22 @@ DATABASES = {
     } 
 }
 
+
+
+
+REDIS_HOST =os.getenv('REDIS_HOST')
+redis_url = urlparse.urlparse(REDIS_HOST)
+
 CACHES = {
-    "default": {
-        "BACKEND": "django_redis.cache.RedisCache",
-        "LOCATION": "redis://127.0.0.1:6379/1",
-        "OPTIONS": {
-            "CLIENT_CLASS": "django_redis.client.DefaultClient",
-        }
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f"redis://{redis_url.hostname}:{redis_url.port}",
+        'OPTIONS': {
+            'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+            'PASSWORD': redis_url.password,
+            "DB": 0,
+        },
+        'TIMEOUT': 3600,
     }
 }
 

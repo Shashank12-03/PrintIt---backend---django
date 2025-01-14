@@ -170,3 +170,22 @@ class GetuserView(APIView):
         except Exception as e:
             
             return Response({'error':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST) 
+        
+        
+class VerifyUserView(APIView):
+    
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    
+    def get(self,request):
+        
+        user = UserService.get_user_by_id(request.user.id)
+        if not user:
+            return Response({'error':'only user can send document'},status=status.HTTP_401_UNAUTHORIZED)
+        
+        data = {
+            'id':user.id,
+            'name':user.name,
+        }
+        return Response({'message':'user', 'user':data},status=status.HTTP_200_OK)

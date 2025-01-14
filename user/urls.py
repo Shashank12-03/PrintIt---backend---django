@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import GoogleLoginCallbackView, CheckLogin,LoginView,GoogleLoginView,SetUserview,GetuserView
+from .views import GoogleLoginCallbackView, CheckLogin,LoginView,GoogleLoginView,SetUserview,GetuserView,VerifyUserView
 from shops.views import SignoutView
 urlpatterns = [
     path("api/v1/auth/google/", GoogleLoginView.as_view(), name="google_login"),
@@ -9,4 +9,5 @@ urlpatterns = [
     path("sign-out", SignoutView.as_view()),
     path('add-user-details', SetUserview.as_view()),
     path('get-user', GetuserView.as_view()),
+    path('verify-user', VerifyUserView.as_view()),
 ]
