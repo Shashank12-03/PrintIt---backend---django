@@ -8,7 +8,7 @@ from .views import (
     AddShopDetailedView,
     SignInView,
     SignoutView,
-    VerifyShopView
+    VerifyShopView,
 )
 from django.urls import path
 

@@ -19,6 +19,7 @@ from .services.shop_services import ShopService
 from django.contrib.gis.db.models.functions import Distance
 from django.core.cache import cache
 from user.services.user_services import UserService
+from django.contrib.postgres.search import SearchVector
 # Create your views here.
 class RegisterShopView(APIView):
     
@@ -288,20 +289,26 @@ class GetShopListView(APIView):
                 distance=Distance('location__geometry', user_location)
             ).order_by('distance')
             
-            shop_list = []
-            for shop in shops:
-                shop_data = {
-                    'shop_id': shop.id, 
-                    'shop_name': shop.name,
-                    'shop_rating': shop.rating,
-                    # addd images
-                    'distance_km': shop.distance.km if shop.distance else None
-                }
-                shop_list.append(shop_data)
+            shop_list = getList(shops)
             return Response({'shop_list':shop_list},status=status.HTTP_200_OK)
         
         except Exception as e:
             return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+
+def getList(shops):
+    shop_list = []
+    for shop in shops:
+        shop_data = {
+            'shop_id': shop.id, 
+            'shop_name': shop.name,
+            'shop_rating': shop.rating,
+            # addd images
+            'distance_km': shop.distance.km if shop.distance else None
+        }
+        shop_list.append(shop_data)
+    return shop_list
+
+
 
 # forgot password 
 # update account
