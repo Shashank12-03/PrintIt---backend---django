@@ -17,7 +17,9 @@ from dj_rest_auth.registration.views import SocialLoginView
 from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from .services.user_services import UserService
-
+from django.contrib.postgres.search import SearchVector
+from shops.views import getList
+from shops.models import Shop
 class GoogleLoginView(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = settings.GOOGLE_OAUTH_CALLBACK_URL
@@ -189,3 +191,34 @@ class VerifyUserView(APIView):
             'name':user.name,
         }
         return Response({'message':'user', 'user':data},status=status.HTTP_200_OK)
+    
+    
+class SearchShopView(APIView): 
+    
+    permission_classes = [IsAuthenticated] 
+    authentication_classes = [JWTAuthentication] 
+    
+    def get(self,request): 
+        
+        user = UserService.get_user_by_id(request.user.id) 
+        if not user: 
+            return Response({'message':'Only users are allowed to search shop'},status=status.HTTP_401_UNAUTHORIZED) 
+        
+        searchStirng = request.query_params.get('search') 
+        print(searchStirng) 
+        
+        try: 
+            
+            shops = Shop.objects.annotate(
+                search=SearchVector("name","location__address")
+                ).filter(search=searchStirng) 
+            shop_list = getList(shops) 
+            return Response({'shop_list':shop_list},status=status.HTTP_200_OK) 
+        
+        except Exception as e: 
+            
+            return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+        
+    
+    
+    
