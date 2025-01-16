@@ -20,6 +20,9 @@ from .services.user_services import UserService
 from django.contrib.postgres.search import SearchVector
 from shops.views import getList
 from shops.models import Shop
+from django.contrib.gis.db.models.functions import Distance
+from django.contrib.gis.geos import Point 
+
 class GoogleLoginView(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
     callback_url = settings.GOOGLE_OAUTH_CALLBACK_URL
@@ -204,21 +207,25 @@ class SearchShopView(APIView):
         if not user: 
             return Response({'message':'Only users are allowed to search shop'},status=status.HTTP_401_UNAUTHORIZED) 
         
+        longitude = request.data.get('longitude')
+        latitude = request.data.get('latitude')
+        
+        if not longitude or not latitude:
+            return Response({'message':'location required'},status=status.HTTP_400_BAD_REQUEST)
+        
         searchStirng = request.query_params.get('search') 
         print(searchStirng) 
         
         try: 
             
+            user_location = Point(float(longitude), float(latitude), srid=4326)
             shops = Shop.objects.annotate(
                 search=SearchVector("name","location__address")
-                ).filter(search=searchStirng) 
+                ).annotate(distance = Distance('location__geometry', user_location)).filter(search=searchStirng) 
+            
             shop_list = getList(shops) 
             return Response({'shop_list':shop_list},status=status.HTTP_200_OK) 
         
         except Exception as e: 
             
             return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
-        
-    
-    
-    

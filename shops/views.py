@@ -27,13 +27,23 @@ class RegisterShopView(APIView):
     
     def post(self,request):
         
-        serializer = RegisterShopSerializer(data = request.data)
-        if serializer.is_valid():
-            shop = serializer.save()
-            return Response({'message':'Shop registered lets move to more details now!!!'},status=status.HTTP_201_CREATED)
+        email = request.data.get('email')
+        shop = Shop.objects.filter(email=email).first()
         
-        return Response({'message':'Oops something went wrong !!!'},status=status.HTTP_400_BAD_REQUEST)
-    
+        if shop:
+            return Response({'message':'shop is already register!!!'},status=status.HTTP_201_CREATED)
+        
+        try:
+            
+            serializer = RegisterShopSerializer(data = request.data)
+            if serializer.is_valid():
+                shop = serializer.save()
+                return Response({'message':'Shop registered lets move to more details now!!!'},status=status.HTTP_201_CREATED)
+            
+        except Exception as e:
+            
+            return Response({'message':'Oops something went wrong !!!','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+
 
 class SignInView(APIView):
     
