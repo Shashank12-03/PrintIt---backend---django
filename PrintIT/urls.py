@@ -25,5 +25,6 @@ urlpatterns = [
     path("api/v1/auth/registration/", include("dj_rest_auth.registration.urls")),
     path('user/',include('user.urls')),
     path('shop/',include('shops.urls')),
+    path('interactions/',include('interactions.urls')),
 ]
 

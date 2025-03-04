@@ -20,6 +20,7 @@ from django.contrib.gis.db.models.functions import Distance
 from django.core.cache import cache
 from user.services.user_services import UserService
 from django.contrib.postgres.search import SearchVector
+from django.db import transaction
 # Create your views here.
 class RegisterShopView(APIView):
     
@@ -134,18 +135,20 @@ class AddShopDetailedView(APIView):
         
         if shop is None:
             return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
-        
+        shop.refresh_from_db()
         try:
-            location, _ = Location.objects.get_or_create(
-                address=address, 
-                geometry=Point(float(longitude), float(latitude)) 
-            )
-            shop.name = name
-            shop.payment_modes = payment_modes
-            shop.facilities = services
-            
-            shop.location = location
-            shop.save()
+            with transaction.atomic():
+                shop.refresh_from_db()
+                location, _ = Location.objects.get_or_create(
+                    address=address, 
+                    geometry=Point(float(longitude), float(latitude)) 
+                )
+                shop.name = name
+                shop.payment_modes = payment_modes
+                shop.facilities = services
+                
+                shop.location = location
+                shop.save()
 
             return Response({'message':'shop details saved!!!'},status=status.HTTP_200_OK)
         except Exception as e:

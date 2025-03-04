@@ -5,4 +5,3 @@ venv
 */__pycache__/
 shops/services/__pycache__
 user/services/__pycache__
-interactions

@@ -25,7 +25,7 @@ from django.contrib.gis.geos import Point
 
 class GoogleLoginView(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
-    callback_url = settings.GOOGLE_OAUTH_CALLBACK_URL
+    callback_url = "https://auth.expo.io/@shashank1203/printit-user"
     client_class = OAuth2Client
 
 
@@ -34,56 +34,45 @@ class GoogleLoginCallbackView(APIView):
     
     permission_classes = [AllowAny]
 
-    def get(self, request, *args, **kwargs):
-        # Step 1: Get the authorization code from the callback
-        code = request.query_params.get('code')  # Use query_params to fetch from URL
-        if code is None:
-            return Response({"error": "Authorization code not provided"}, status=status.HTTP_400_BAD_REQUEST)
-
-        # Step 2: Exchange code for an access token
-        token_url = "https://oauth2.googleapis.com/token"
-        token_data = {
-            "code": code,
-            "client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
-            "client_secret": settings.GOOGLE_OAUTH_CLIENT_SECRET,
-            "redirect_uri": settings.GOOGLE_OAUTH_CALLBACK_URL,
-            "grant_type": "authorization_code",
-        }
-
-        token_response = requests.post(token_url, data=token_data)
-        if token_response.status_code != 200:
-            return Response({"error": "Failed to retrieve access token"}, status=status.HTTP_400_BAD_REQUEST)
-
-        access_token = token_response.json().get("access_token")
-
-        user_info_url = "https://www.googleapis.com/oauth2/v1/userinfo"
-        user_info_response = requests.get(user_info_url, headers={"Authorization": f"Bearer {access_token}"})
-        if user_info_response.status_code != 200:
-            return Response({"error": "Failed to retrieve user info"}, status=status.HTTP_400_BAD_REQUEST)
-
-        user_info = user_info_response.json()
-        email = user_info.get("email")
+    def post(self, request, *args, **kwargs):
+        # Step 1: Get the ID token from the request body
+        access_token = request.data.get("token")
+        print(access_token)
         
+        if not access_token:
+            return Response({"error": "Access token not provided"}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Step 2: Verify the token with Google and get user info
+        google_user_info_url = "https://www.googleapis.com/oauth2/v3/userinfo"
+        headers = {"Authorization": f"Bearer {access_token}"}
+        response = requests.get(google_user_info_url, headers=headers)
+
+        if response.status_code != 200:
+            return Response({"error": "Invalid access token"}, status=status.HTTP_400_BAD_REQUEST)
+
+        user_info = response.json()
+        email = user_info.get("email")
+        print(email)
         if not email:
             return Response({"error": "Email not provided by Google"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Step 4: Check if user exists, or create a new user
+        # Step 3: Check if user exists, or create a new user
         user, created = User.objects.get_or_create(email=email)
         if created:
-            print("created")
-            user.set_unusable_password()  # Since it's a social login
+            user.set_unusable_password()  # No password needed for Google sign-in
             user.save()
-        # Step 5: Generate JWT token
+        
+        # Step 4: Generate JWT token for authentication
         refresh = RefreshToken.for_user(user)
         token_data = {
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }
 
-        # Step 6: Return token and user info
+        # Step 5: Return token and user info
         return Response(
             {
-                "user": {"email": user.email},
+                "user": {"email": user.email, "name": user_info.get("name"), "picture": user_info.get("picture")},
                 "token": token_data,
             },
             status=status.HTTP_200_OK,
@@ -91,7 +80,7 @@ class GoogleLoginCallbackView(APIView):
 
 class CheckLogin(APIView):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsAuthenticated] 
+    permission_classes = [IsAuthenticated]
     
     def get(request):
         return Response({'message':'authentication successful!!! hello!!!!'},status.HTTP_200_OK)
@@ -101,15 +90,15 @@ class LoginView(APIView):
     
     permission_classes = [AllowAny]
     
-    def get(self, request, *args, **kwargs):
-        return render(
-            request,
-            "home.html",
-            {
+    def get(self, request):
+        try:
+            data = {
                 "google_callback_uri": settings.GOOGLE_OAUTH_CALLBACK_URL,
                 "google_client_id": settings.GOOGLE_OAUTH_CLIENT_ID,
-            },
-        )
+            }
+            return Response({'message':'login page','credentials':data},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
 
 class SetUserview(APIView):
     

@@ -37,7 +37,7 @@ class GoogleSignInSerializer(serializers.Serializer):
             "code": code,
             "client_id": GOOGLE_OAUTH_CLIENT_ID,
             "client_secret":GOOGLE_OAUTH_CLIENT_SECRET,
-            "redirect_uri":GOOGLE_OAUTH_CALLBACK_URL,  # Set this in Google Console
+            "redirect_uri":"https://auth.expo.io/@shashank1203/printit-user",  # Set this in Google Console
             "grant_type": "authorization_code",
         }
         token_response = requests.post(google_token_endpoint, data=data)

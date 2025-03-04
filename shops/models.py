@@ -24,3 +24,4 @@ class Shop(CustomUserModel):
     facilities = models.JSONField(default=dict,null=True, blank=True)
     images = models.ForeignKey(Images,on_delete=models.CASCADE, related_name='photos',null=True)
     location = models.OneToOneField(Location,on_delete=models.CASCADE,null=True, related_name='shops')
+    rated = models.IntegerField(default=0,null=True,blank=True)

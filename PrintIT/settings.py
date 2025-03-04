@@ -29,7 +29,7 @@ SECRET_KEY = 'django-insecure-fh4c7s4t8fl+)nwpvwx_pf$lv*ocjag57j#8%zj55c(f8*1tn!
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['127.0.0.1','localhost']
+ALLOWED_HOSTS = ["*"]
 
 
 # Application definition
@@ -93,12 +93,17 @@ os.environ['PATH'] = 'C:/OSGeo4W/bin;' + os.environ['PATH']
 os.environ['GDAL_DATA'] = 'C:/OSGeo4W/share/gdal'
 os.environ['PROJ_LIB'] = 'C:/OSGeo4W/share/proj'
 
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
+
 
 
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "exp://192.168.11.247:8081",
+    "http://localhost:8081",
+    "http://192.168.11.247:8000"
 ]
 CSRF_TRUSTED_ORIGINS = [
     'https://accounts.google.com',  
