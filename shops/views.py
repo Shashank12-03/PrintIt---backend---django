@@ -21,6 +21,8 @@ from django.core.cache import cache
 from user.services.user_services import UserService
 from django.contrib.postgres.search import SearchVector
 from django.db import transaction
+from django.db.models import F, ExpressionWrapper, FloatField
+
 # Create your views here.
 class RegisterShopView(APIView):
     
@@ -32,7 +34,7 @@ class RegisterShopView(APIView):
         shop = Shop.objects.filter(email=email).first()
         
         if shop:
-            return Response({'message':'shop is already register!!!'},status=status.HTTP_201_CREATED)
+            return Response({'message':'shop is already register!!!'},status=status.HTTP_400_BAD_REQUEST)
         
         try:
             
@@ -40,7 +42,8 @@ class RegisterShopView(APIView):
             if serializer.is_valid():
                 shop = serializer.save()
                 return Response({'message':'Shop registered lets move to more details now!!!'},status=status.HTTP_201_CREATED)
-            
+            else:
+                return Response({'message':'Oops something went wrong with serializer !!!'},status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
             
             return Response({'message':'Oops something went wrong !!!','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
@@ -75,10 +78,10 @@ class SignInView(APIView):
             return Response({'message':'serializer is not valid'},status=status.HTTP_400_BAD_REQUEST)
         except serializers.ValidationError as e:
             print(e)
-            Response({'error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+            Response({'error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
         except TokenError as e:
-            Response({'message':'something went wrong','error':e},status=status.HTTP_400_BAD_REQUEST)
+            Response({'message':'something went wrong','error':e},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 class GetEmailTokenView(TokenObtainPairView):
     serializer_class = EmailGetTokenSerializer
@@ -122,20 +125,20 @@ class AddShopDetailedView(APIView):
         print(request.user)
         
         name = request.data.get('name')
+        owner_name = request.data.get('owner_name')
+        owner_number = request.data.get('owner_number')
         payment_modes = request.data.get('payment_modes')
         services = request.data.get('services')
         address = request.data.get('address')
         latitude = request.data.get('latitude')
         longitude = request.data.get('longitude')
-        # images = request.FILES.getlist('images')
-        
         
         
         shop = ShopService.get_shop_by_id(request.user.id)
         
         if shop is None:
             return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
-        shop.refresh_from_db()
+        
         try:
             with transaction.atomic():
                 shop.refresh_from_db()
@@ -146,7 +149,8 @@ class AddShopDetailedView(APIView):
                 shop.name = name
                 shop.payment_modes = payment_modes
                 shop.facilities = services
-                
+                shop.owner_name = owner_name
+                shop.owner_number = owner_number
                 shop.location = location
                 shop.save()
 
@@ -163,34 +167,22 @@ class AddImagesView(APIView):
     
     def post(self,request):
         
-        images = request.FILES.getlist('images')
-        
-        
-        if not isinstance(request.user,Shop):
-            return Response({'message':'operation allowed only for shops!!!'},status=status.HTTP_401_UNAUTHORIZED)
+        images = request.data.get('images')    
         
         shop = ShopService.get_shop_by_id(request.user.id)
+        if shop is None:
+            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
     
-        if shop is not None:
-            try:
-                
-                image_path = shop.images if shop.images else []
-                
-                for image in images:
-                    file_name = default_storage.save(f'media/shops/{image.name}',image)
-                    image_path.append(file_name)
-                
-                photos = Images.objects.get_or_create(images = image_path) 
-                shop.images = photos
+        try:
+            with transaction.atomic():
+                shop.refresh_from_db()
+                shop.images = images
                 shop.save()
-        
-                return Response({'message':'images added successfully!!!'},status=status.HTTP_200_OK)
-        
-            except Exception as e:
-                return Response({'message':'unable to add images location','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
-            
-        else:
-            return Response({'message':'shop doesnt exist'},status=status.HTTP_404_NOT_FOUND)
+    
+            return Response({'message':'images added successfully!!!'},status=status.HTTP_200_OK)
+    
+        except Exception as e:
+            return Response({'message':'unable to add images location','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
         
 
 class SignoutView(APIView):
@@ -256,70 +248,87 @@ class GetShopView(APIView):
         
         shop = ShopService.get_shop_by_id(id)
         if shop is None:
-            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
+            print('shop not found')
+            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_400_BAD_REQUEST)
         
         try:
             data = {
                 'shop_id':id,
                 'shop_name':shop.name,
                 'shop_address': shop.location.address,
-                # add image
+                'owner_name':shop.owner_name,
+                'owner_number':shop.owner_number,
+                'shop_images':["https://content.jdmagicbox.com/v2/comp/bangalore/l2/080pxx80.xx80.160519151520.l1l2/catalogue/galaxies-enterprises-bangalore-0rt9ockuaa-250.jpg","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQogIEhbS0Zn-1OSXPPnEhkuNCpN_Jqi_hJBQ&s","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxILCoOct2LvnWikhR8L46MOiYPbSnVv2rVg&s"],
                 'location':{
                     "latitude": shop.location.geometry.y,
                     "longitude": shop.location.geometry.x
                 } if shop.location else None,
-                'shop':shop.rating,
+                'shop_rating':shop.rating,
                 'shop_facilites':shop.facilities,
-                'shop_paymentmodes':shop.payment_modes
+                'shop_paymentmodes':shop.payment_modes, 
             }
             
             return Response({'shop':data},status=status.HTTP_200_OK)
         
         except Exception as e:
-            return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message':'error occured','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GetShopListView(APIView):
     
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
     
-    def get(self,request):
-        
+    def get(self, request):
         user = UserService.get_user_by_id(request.user.id)
         if not user:
-            return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
-        
-        longitude = request.data.get('longitude')
-        latitude = request.data.get('latitude')
-        
+            return Response({'message': 'requested by not allowed user'}, status=status.HTTP_400_BAD_REQUEST)
+         
+        longitude = request.query_params.get('longitude')
+        # longitude = request.data.get('longitude')
+        latitude = request.query_params.get('latitude')
+        # latitude = request.data.get('latitude')
         if not longitude or not latitude:
-            return Response({'message':'location required'},status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message': 'location required'}, status=status.HTTP_400_BAD_REQUEST)
         
-        try:
-                
+        try:    
             user_location = Point(float(longitude), float(latitude), srid=4326)
-            shops = Shop.objects.annotate(
-                distance=Distance('location__geometry', user_location)
-            ).order_by('distance')
             
-            shop_list = getList(shops)
-            return Response({'shop_list':shop_list},status=status.HTTP_200_OK)
+            # shops = Shop.objects.select_related("location").annotate(
+            #     distance=Distance('location__geometry', user_location)
+            # ).order_by('distance')
+            # print(shops)
+            # shops = Shop.objects.select_related("location").annotate(
+            #     distance=Distance('location__geometry', user_location)
+            # ).order_by('distance').values_list('id','name','rating','location__address','images__images')
+            shops = Shop.objects.select_related("location")\
+            .annotate(distance_m=Distance('location__geometry', user_location))\
+            .annotate(
+                distance_km=ExpressionWrapper(
+                    F('distance_m') / 1000.0,
+                    output_field=FloatField()
+                )
+            ).order_by('distance_m')\
+            .values('id', 'name', 'rating', 'location__address', 'images__images', 'distance_km')
+            # print(shops)
+            # shop_list = getList(shops)
+            return Response({'shop_list': shops}, status=status.HTTP_200_OK)
         
         except Exception as e:
-            return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+            print(str(e))
+            return Response({'message': 'error occurred', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 def getList(shops):
-    shop_list = []
-    for shop in shops:
-        shop_data = {
+    return [
+        {
             'shop_id': shop.id, 
             'shop_name': shop.name,
             'shop_rating': shop.rating,
-            # addd images
+            'shopImages': "https://content.jdmagicbox.com/v2/comp/bangalore/l2/080pxx80.xx80.160519151520.l1l2/catalogue/galaxies-enterprises-bangalore-0rt9ockuaa-250.jpg",
+            'shop_address': shop.location.address if shop.location.address else None,  # Access without additional DB queries
             'distance_km': shop.distance.km if shop.distance else None
         }
-        shop_list.append(shop_data)
-    return shop_list
+        for shop in shops
+    ]
 
 
 

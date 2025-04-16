@@ -43,7 +43,7 @@ class CustomUserModel(AbstractBaseUser):
 class User(CustomUserModel):
     name = models.CharField(max_length=100,blank=True)
     mobile_no = models.CharField(max_length=10)
-    profile_photo = models.ImageField(upload_to='media/users')
+    profile_photo = models.CharField(max_length=500,blank=True)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     
     def __str__(self):

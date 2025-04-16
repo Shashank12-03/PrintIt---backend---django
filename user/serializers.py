@@ -6,6 +6,9 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from django.conf import settings
 from dotenv import load_dotenv
 import os
+from django.contrib.auth import authenticate
+from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
+
 
 
 load_dotenv()
@@ -23,6 +26,23 @@ class CustomRegisterSerializer(RegisterSerializer):
         return data_dict
     
     
+class EmailGetTokenSerializer(TokenObtainPairSerializer):
+    
+    def validate(self, attrs):
+        
+        email = attrs.get('email')
+        password = attrs.get('password')
+        
+        self.user = authenticate(request=self.context.get('request'),username=email,password=password, backend ='user.backends.UserAuthenticationBackend' )
+        if not self.user :
+            return serializers.ValidationError((f'No active user found with {email}'),code='authentication')
+        
+        data ={}
+        refresh = self.get_token(self.user)
+        data['refresh'] = str(refresh)
+        data['access'] = str(refresh.access_token)
+        return data
+        
 class GoogleSignInSerializer(serializers.Serializer):
     code = serializers.CharField()
 

@@ -37,3 +37,25 @@ class ShopService():
         
         return shop
     
+    @staticmethod
+    def get_shops_by_ids(ids):
+        cache_key = f"shops_{'_'.join(map(str, ids))}"
+        shops = cache.get(cache_key)
+        
+        if shops is None:
+            shops = []
+            for shop_id in ids:
+                shop_cache_key = f"shop_{shop_id}"
+                shop = cache.get(shop_cache_key)
+                
+                if shop is None:
+                    shop = Shop.objects.filter(id=shop_id).values('id', 'name', 'address', 'rating', 'images').first()
+                    if shop:
+                        cache.set(shop_cache_key, shop, timeout=3600)
+            
+            if shop:
+                shops.append(shop)
+            
+            cache.set(cache_key, shops, timeout=None)  
+        
+        return shops

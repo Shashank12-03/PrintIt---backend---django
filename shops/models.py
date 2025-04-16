@@ -17,7 +17,9 @@ class Images(models.Model):
 
 class Shop(CustomUserModel):
     name = models.CharField(max_length=200)
-    rating =models.DecimalField(max_digits=5, decimal_places=1,default=3)
+    owner_name = models.CharField(max_length=200,blank=True,null=True)
+    owner_number = models.CharField(max_length=10,blank=True,null=True)
+    rating = models.DecimalField(max_digits=5, decimal_places=1,default=3)
     payment_modes = ArrayField(
         models.CharField(), blank=True, default=list,null=True
     )

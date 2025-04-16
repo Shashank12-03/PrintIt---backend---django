@@ -1,3 +1,4 @@
+from tokenize import TokenError
 from django.shortcuts import render
 from google.oauth2 import id_token
 from rest_framework.views import APIView
@@ -22,6 +23,10 @@ from shops.views import getList
 from shops.models import Shop
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point 
+from rest_framework_simplejwt.views import TokenObtainPairView
+from .serializers import EmailGetTokenSerializer
+from rest_framework_simplejwt.views import TokenRefreshView
+from django.db import transaction
 
 class GoogleLoginView(SocialLoginView):
     adapter_class = GoogleOAuth2Adapter
@@ -72,7 +77,7 @@ class GoogleLoginCallbackView(APIView):
         # Step 5: Return token and user info
         return Response(
             {
-                "user": {"email": user.email, "name": user_info.get("name"), "picture": user_info.get("picture")},
+                "user": {"id":user.id,"email": user.email, "name": user_info.get("name"), "picture": user_info.get("picture")},
                 "token": token_data,
             },
             status=status.HTTP_200_OK,
@@ -100,6 +105,61 @@ class LoginView(APIView):
         except Exception as e:
             return Response({'message':'error occured','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
 
+class RegisterUserView(APIView):
+        
+    permission_classes = [AllowAny]
+    
+    def post(self,request):
+        
+        email = request.data.get('email')
+        password = request.data.get('password')
+        print(email,password)
+        if not email or not password:
+            return Response({'message':'email and password required'},status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            
+            user = User.objects.create_user(email=email,password=password)
+            user.save()
+            print(user)
+            return Response({'message':'user created'},status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            print(str(e))
+            return Response({'error':'error occured','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+        
+class GetEmailTokenView(TokenObtainPairView):
+    serializer_class = EmailGetTokenSerializer
+    
+
+class CustomTokenRefreshView(TokenRefreshView):
+    permission_classes = [AllowAny]
+    
+ 
+class SignoutView(APIView):
+    
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    def post(self,request,*args, **kwargs):
+        
+        refresh_token = request.data.get('refresh_token')
+        
+        if not refresh_token:
+            return Response({'message':'need refresh token to signout'},status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            
+            token = RefreshToken(refresh_token)
+            print(token)
+            token.blacklist()
+            return Response({'message':'signed out'},status=status.HTTP_200_OK)
+        
+        except TokenError as e:
+            return Response({'message': 'Invalid or expired refresh token', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            return Response({'message':'unable to sign out','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
 class SetUserview(APIView):
     
     permission_classes = [IsAuthenticated]
@@ -107,30 +167,21 @@ class SetUserview(APIView):
     
     def post(self,request):
         
-        name = request.data.get('name')
-        mobile_no = request.data.get('mobile_no')
-        
-        # add image
-        
         user = UserService.get_user_by_id(request.user.id)
-        
         
         if not user:
             return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
         
         try:
             
+            name = request.data.get('name', user.name)
+            mobile_no = request.data.get('mobile_no',user.mobile_no)
+            profile_photo = request.data.get('profile_photo',user.profile_photo)
             user.name = name
             user.mobile_no = mobile_no
-            
+            user.profile_photo = profile_photo
             user.save()
             
-            data = {
-                'id':user.id,
-                'email':user.email,
-                'name':user.name,
-                'mobile_no':user.mobile_no,
-            }
             
             return Response({'message':'user data saved'},status=status.HTTP_200_OK)
         
@@ -151,13 +202,16 @@ class GetuserView(APIView):
             return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
         
         try:
-            
-            data = {
-                    'id':user.id,
-                    'email':user.email,
-                    'name':user.name,
-                    'mobile_no':user.mobile_no,
-                }
+            with transaction.atomic():
+                user = UserService.get_user_by_id(request.user.id) 
+                user.refresh_from_db()
+                data = {
+                        'id':user.id,
+                        'email':user.email,
+                        'name':user.name,
+                        'image':user.profile_photo,
+                        'mobile_no':user.mobile_no,
+                    }
             
             return Response({'user':data},status=status.HTTP_200_OK)
         

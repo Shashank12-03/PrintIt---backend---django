@@ -16,6 +16,6 @@ class UserInteraction(models.Model):
     files = ArrayField(models.CharField(max_length=200, blank=True, default=list, null=True))
     
 class UserFavourite(models.Model):
-    user = models.ForeignKey(User,on_delete=models.CASCADE, null=True, related_name='favorite_hotels')
+    user = models.ForeignKey(User,on_delete=models.CASCADE, null=True, related_name='favorite_shops')
     shop = models.ForeignKey(Shop,on_delete=models.CASCADE, related_name='favorited_by')
     
