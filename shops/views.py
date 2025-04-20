@@ -243,30 +243,35 @@ class GetShopView(APIView):
     def get(self,request,id):
         
         user = UserService.get_user_by_id(request.user.id)
+        
         if not user:
             return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
-        
-        shop = ShopService.get_shop_by_id(id)
-        if shop is None:
-            print('shop not found')
-            return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_400_BAD_REQUEST)
-        
         try:
-            data = {
-                'shop_id':id,
-                'shop_name':shop.name,
-                'shop_address': shop.location.address,
-                'owner_name':shop.owner_name,
-                'owner_number':shop.owner_number,
-                'shop_images':["https://content.jdmagicbox.com/v2/comp/bangalore/l2/080pxx80.xx80.160519151520.l1l2/catalogue/galaxies-enterprises-bangalore-0rt9ockuaa-250.jpg","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQogIEhbS0Zn-1OSXPPnEhkuNCpN_Jqi_hJBQ&s","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxILCoOct2LvnWikhR8L46MOiYPbSnVv2rVg&s"],
-                'location':{
-                    "latitude": shop.location.geometry.y,
-                    "longitude": shop.location.geometry.x
-                } if shop.location else None,
-                'shop_rating':shop.rating,
-                'shop_facilites':shop.facilities,
-                'shop_paymentmodes':shop.payment_modes, 
-            }
+            data = get_shop(id)
+            if data is None:
+                return Response({'message':'shop not found'},status=status.HTTP_404_NOT_FOUND)
+            
+            return Response({'shop':data},status=status.HTTP_200_OK)
+        
+        except Exception as e:
+            return Response({'message':'error occured','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+class GetLoginShopView(APIView):
+    
+    
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [JWTAuthentication]
+    
+    def get(self,request):
+        
+        user = UserService.get_user_by_id(request.user.id)
+        
+        if user:
+            return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
+        try:
+            data = get_shop(request.user.id)
+            if data is None:
+                return Response({'message':'shop not found'},status=status.HTTP_404_NOT_FOUND)
             
             return Response({'shop':data},status=status.HTTP_200_OK)
         
@@ -317,6 +322,36 @@ class GetShopListView(APIView):
             print(str(e))
             return Response({'message': 'error occurred', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+def get_shop(id):
+    shop = ShopService.get_shop_by_id(id)
+    if shop is None:
+        print('shop not found')
+        return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_400_BAD_REQUEST)
+    
+    try:
+        data = {
+            'shop_id':id,
+            'shop_name':shop.name,
+            'shop_address': shop.location.address,
+            'owner_name':shop.owner_name,
+            'owner_number':shop.owner_number,
+            'shop_images':["https://content.jdmagicbox.com/v2/comp/bangalore/l2/080pxx80.xx80.160519151520.l1l2/catalogue/galaxies-enterprises-bangalore-0rt9ockuaa-250.jpg","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQogIEhbS0Zn-1OSXPPnEhkuNCpN_Jqi_hJBQ&s","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxILCoOct2LvnWikhR8L46MOiYPbSnVv2rVg&s"],
+            'location':{
+                "latitude": shop.location.geometry.y,
+                "longitude": shop.location.geometry.x
+            } if shop.location else None,
+            'shop_rating':shop.rating,
+            'shop_facilites':shop.facilities,
+            'shop_paymentmodes':shop.payment_modes, 
+        }
+        
+        return data
+    
+    except Exception as e:
+        print(str(e))
+        return None
+
+
 def getList(shops):
     return [
         {
@@ -329,7 +364,6 @@ def getList(shops):
         }
         for shop in shops
     ]
-
 
 
 # forgot password 

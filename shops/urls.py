@@ -9,6 +9,7 @@ from .views import (
     SignInView,
     SignoutView,
     VerifyShopView,
+    GetLoginShopView
 )
 from django.urls import path
 
@@ -19,6 +20,7 @@ urlpatterns = [
     path("sign-out", SignoutView.as_view()),
     path("check", CheckLoginView.as_view()),
     path("add-details", AddShopDetailedView.as_view()),
+    path("get-login-shop",GetLoginShopView.as_view()),
     path("get-shop/<int:id>", GetShopView.as_view()),
     path("get-shops", GetShopListView.as_view()),
     path('verify-shop', VerifyShopView.as_view()),
