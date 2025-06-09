@@ -1,5 +1,6 @@
 from django.shortcuts import render
 from .models import Shop
+from user.models import User
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
 from .serializer import RegisterShopSerializer,EmailGetTokenSerializer
@@ -22,7 +23,7 @@ from user.services.user_services import UserService
 from django.contrib.postgres.search import SearchVector
 from django.db import transaction
 from django.db.models import F, ExpressionWrapper, FloatField
-
+import time
 # Create your views here.
 class RegisterShopView(APIView):
     
@@ -265,7 +266,7 @@ class GetLoginShopView(APIView):
     def get(self,request):
         
         user = UserService.get_user_by_id(request.user.id)
-        
+        # user = User.objects.filter(id = request.user.id).first()
         if user:
             return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
         try:
@@ -284,7 +285,8 @@ class GetShopListView(APIView):
     authentication_classes = [JWTAuthentication]
     
     def get(self, request):
-        user = UserService.get_user_by_id(request.user.id)
+        # user = UserService.get_user_by_id(request.user.id)
+        user = User.objects.filter(id = request.user.id).first()
         if not user:
             return Response({'message': 'requested by not allowed user'}, status=status.HTTP_400_BAD_REQUEST)
          
@@ -297,7 +299,9 @@ class GetShopListView(APIView):
         
         try:    
             user_location = Point(float(longitude), float(latitude), srid=4326)
-            
+            page = request.query_params.get('page', 1)
+            limit = request.query_params.get('page_size', 10)
+            offset = ((int)(page)-1)*limit
             # shops = Shop.objects.select_related("location").annotate(
             #     distance=Distance('location__geometry', user_location)
             # ).order_by('distance')
@@ -305,15 +309,20 @@ class GetShopListView(APIView):
             # shops = Shop.objects.select_related("location").annotate(
             #     distance=Distance('location__geometry', user_location)
             # ).order_by('distance').values_list('id','name','rating','location__address','images__images')
+            start = time.time()
             shops = Shop.objects.select_related("location")\
             .annotate(distance_m=Distance('location__geometry', user_location))\
+            .prefetch_related("images")\
             .annotate(
                 distance_km=ExpressionWrapper(
                     F('distance_m') / 1000.0,
                     output_field=FloatField()
                 )
-            ).order_by('distance_m')\
-            .values('id', 'name', 'rating', 'location__address', 'images__images', 'distance_km')
+            ).filter(distance_m__lte=5000)\
+            .order_by('distance_m')\
+            .values('id', 'name', 'rating', 'location__address', 'distance_km')[:limit]
+            end = time.time()
+            print(f"Time taken to fetch shops: {end - start} seconds")
             # print(shops)
             # shop_list = getList(shops)
             return Response({'shop_list': shops}, status=status.HTTP_200_OK)

@@ -264,7 +264,7 @@ class SearchShopView(APIView):
             user_location = Point(float(longitude), float(latitude), srid=4326)
             shops = Shop.objects.annotate(
                 search=SearchVector("name","location__address")
-                ).annotate(distance = Distance('location__geometry', user_location)).filter(search=searchStirng) 
+                ).annotate(distance = Distance('location__geometry', user_location)).filter(search=searchStirng).values('id', 'name', 'rating', 'location__address', 'images__images', 'distance_km') 
             
             shop_list = getList(shops) 
             return Response({'shop_list':shop_list},status=status.HTTP_200_OK) 
