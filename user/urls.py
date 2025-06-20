@@ -15,9 +15,11 @@ from .views import (
 )
 from shops.views import SignoutView
 
+app_name = "user"
+
 urlpatterns = [
     path("api/v1/auth/google/", GoogleLoginView.as_view(), name="google_login"),
-    path("email-login",RegisterUserView.as_view()),
+    path("email-login",RegisterUserView.as_view(),name="email-login"),
     path("auth", GoogleLoginCallbackView.as_view()),
     path("get-token", GetEmailTokenView.as_view()),
     path('token-refresh', CustomTokenRefreshView.as_view()),
