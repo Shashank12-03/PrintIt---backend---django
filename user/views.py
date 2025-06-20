@@ -61,20 +61,17 @@ class GoogleLoginCallbackView(APIView):
         if not email:
             return Response({"error": "Email not provided by Google"}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Step 3: Check if user exists, or create a new user
         user, created = User.objects.get_or_create(email=email)
         if created:
-            user.set_unusable_password()  # No password needed for Google sign-in
+            user.set_unusable_password()  
             user.save()
-        
-        # Step 4: Generate JWT token for authentication
+
         refresh = RefreshToken.for_user(user)
         token_data = {
             "refresh": str(refresh),
             "access": str(refresh.access_token),
         }
 
-        # Step 5: Return token and user info
         return Response(
             {
                 "user": {"id":user.id,"email": user.email, "name": user_info.get("name"), "picture": user_info.get("picture")},
