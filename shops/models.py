@@ -2,6 +2,7 @@
 from user.models import CustomUserModel
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
+from .storage import ShopImageStorage
 # Create your models here.
 
 
@@ -11,8 +12,14 @@ class Location(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 class Images(models.Model):
-    images = ArrayField(models.CharField(max_length=200), blank=True, null=True)
-    uploaded_at = models.DateTimeField(auto_now_add=True,null=True,blank=True)
+    image = models.ImageField(upload_to='',storage=ShopImageStorage())
+    file_location = models.URLField(default='')
+    uploaded_at = models.DateTimeField(auto_now_add=True)
+    width = models.IntegerField(null=True, blank=True)
+    height = models.IntegerField(null=True, blank=True)
+    format = models.CharField(max_length=10, null=True, blank=True)
+    content_type = models.CharField(max_length=50, null=True, blank=True)
+    file_size = models.BigIntegerField(null=True, blank=True)  # in bytes
     
 
 class Shop(CustomUserModel):

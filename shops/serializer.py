@@ -1,8 +1,9 @@
 from .models import Shop
-from rest_framework import serializers
+from rest_framework import serializers 
 from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.contrib.auth import authenticate
 from rest_framework_simplejwt.tokens import RefreshToken
+from .models import Images
 
 class RegisterShopSerializer(serializers.ModelSerializer):
     
@@ -40,3 +41,11 @@ class EmailGetTokenSerializer(TokenObtainPairSerializer):
         token = super().get_token(user)
         token['email'] = user.email
         return token
+    
+
+class ImageSerializer(serializers.ModelSerializer):
+    
+    class Meta:
+        model = Images
+        fields = ['id','image', 'file_location', 'file_name', 'uploaded_at','width','height','format','content_type','file_size']
+        

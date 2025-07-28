@@ -3,7 +3,7 @@ from .models import Shop
 from user.models import User
 from rest_framework.views import APIView
 from rest_framework.permissions import AllowAny
-from .serializer import RegisterShopSerializer,EmailGetTokenSerializer
+from .serializer import RegisterShopSerializer,EmailGetTokenSerializer,ImageSerializer
 from rest_framework.response import Response
 from rest_framework_simplejwt.views import TokenObtainPairView
 from rest_framework import status
@@ -24,6 +24,8 @@ from django.contrib.postgres.search import SearchVector
 from django.db import transaction
 from django.db.models import F, ExpressionWrapper, FloatField
 import time
+from rest_framework.parsers import MultiPartParser
+from .support import get_image_metadata, get_list, get_shop
 # Create your views here.
 class RegisterShopView(APIView):
     
@@ -157,7 +159,7 @@ class AddShopDetailedView(APIView):
 
             return Response({'message':'shop details saved!!!'},status=status.HTTP_200_OK)
         except Exception as e:
-            return Response({'message':'unable to make changes','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message':'unable to make changes','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 
@@ -165,25 +167,36 @@ class AddImagesView(APIView):
     
     permission_classes = [IsAuthenticated]
     authentication_classes = [JWTAuthentication]
+    parser_classes = [MultiPartParser]
     
     def post(self,request):
         
-        images = request.data.get('images')    
+        image = request.FILES.getlist('image')
+        
+        if not image:
+            return Response({"message":"images required to store"},status=status.HTTP_400_BAD_REQUEST)
         
         shop = ShopService.get_shop_by_id(request.user.id)
         if shop is None:
             return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
     
         try:
-            with transaction.atomic():
-                shop.refresh_from_db()
-                shop.images = images
-                shop.save()
-    
-            return Response({'message':'images added successfully!!!'},status=status.HTTP_200_OK)
+            metadata = get_image_metadata(image)
+            image_instance = Images.objects.create(
+                image = image,
+                width = metadata['width'],
+                height = metadata['height'],
+                format = metadata['format'],
+                content_type = metadata['content_type'],
+                file_size = metadata['file_size']
+            )
+            shop.images = image_instance
+            shop.save()
+            serializer = ImageSerializer(image_instance,many=True)
+            return Response({'message':'images added successfully!!!','data':serializer.data},status=status.HTTP_200_OK)
     
         except Exception as e:
-            return Response({'message':'unable to add images location','error':str(e)},status=status.HTTP_400_BAD_REQUEST)
+            return Response({'message':'unable to add images','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         
 
 class SignoutView(APIView):
@@ -220,13 +233,14 @@ class DeleteAccountView(APIView):
     def delete(self,request):
             
         try:
-            
+            # this will only delete the shop from database 
+            # not all related data such as location images 
+            # to delete related data we need to delete each
             shop = ShopService.get_shop_by_id(request.user.id)
             if shop is not None:
                 shop.delete()
                 cache_key = f"shop_{request.user.id}"
                 cache.delete(cache_key)
-                
                 return Response({'message':'shop deleted !!!'},status=status.HTTP_200_OK)
             
             else:
@@ -248,36 +262,15 @@ class GetShopView(APIView):
         if not user:
             return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
         try:
-            data = get_shop(id)
-            if data is None:
+            shop = Shop.objects.filter(id=id).values('id','name','location__address','owner_name','owner_number','rating')
+            if shop is None:
                 return Response({'message':'shop not found'},status=status.HTTP_404_NOT_FOUND)
             
-            return Response({'shop':data},status=status.HTTP_200_OK)
+            return Response({'shop':shop},status=status.HTTP_200_OK)
         
         except Exception as e:
             return Response({'message':'error occured','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
-class GetLoginShopView(APIView):
-    
-    
-    permission_classes = [IsAuthenticated]
-    authentication_classes = [JWTAuthentication]
-    
-    def get(self,request):
-        
-        user = UserService.get_user_by_id(request.user.id)
-        # user = User.objects.filter(id = request.user.id).first()
-        if user:
-            return Response({'message':'requested by not allowed user'},status=status.HTTP_400_BAD_REQUEST)
-        try:
-            data = get_shop(request.user.id)
-            if data is None:
-                return Response({'message':'shop not found'},status=status.HTTP_404_NOT_FOUND)
-            
-            return Response({'shop':data},status=status.HTTP_200_OK)
-        
-        except Exception as e:
-            return Response({'message':'error occured','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GetShopListView(APIView):
     
@@ -331,48 +324,7 @@ class GetShopListView(APIView):
             print(str(e))
             return Response({'message': 'error occurred', 'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-def get_shop(id):
-    shop = ShopService.get_shop_by_id(id)
-    if shop is None:
-        print('shop not found')
-        return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_400_BAD_REQUEST)
-    
-    try:
-        data = {
-            'shop_id':id,
-            'shop_name':shop.name,
-            'shop_address': shop.location.address,
-            'owner_name':shop.owner_name,
-            'owner_number':shop.owner_number,
-            'shop_images':["https://content.jdmagicbox.com/v2/comp/bangalore/l2/080pxx80.xx80.160519151520.l1l2/catalogue/galaxies-enterprises-bangalore-0rt9ockuaa-250.jpg","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQogIEhbS0Zn-1OSXPPnEhkuNCpN_Jqi_hJBQ&s","https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQxILCoOct2LvnWikhR8L46MOiYPbSnVv2rVg&s"],
-            'location':{
-                "latitude": shop.location.geometry.y,
-                "longitude": shop.location.geometry.x
-            } if shop.location else None,
-            'shop_rating':shop.rating,
-            'shop_facilites':shop.facilities,
-            'shop_paymentmodes':shop.payment_modes, 
-        }
-        
-        return data
-    
-    except Exception as e:
-        print(str(e))
-        return None
 
-
-def getList(shops):
-    return [
-        {
-            'shop_id': shop.id, 
-            'shop_name': shop.name,
-            'shop_rating': shop.rating,
-            'shopImages': "https://content.jdmagicbox.com/v2/comp/bangalore/l2/080pxx80.xx80.160519151520.l1l2/catalogue/galaxies-enterprises-bangalore-0rt9ockuaa-250.jpg",
-            'shop_address': shop.location.address if shop.location.address else None,  # Access without additional DB queries
-            'distance_km': shop.distance.km if shop.distance else None
-        }
-        for shop in shops
-    ]
 
 
 # forgot password 

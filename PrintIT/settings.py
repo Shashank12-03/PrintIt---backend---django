@@ -15,6 +15,7 @@ from dotenv import load_dotenv
 from datetime import timedelta
 import os
 import urllib.parse as urlparse
+from google.oauth2 import service_account
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -55,6 +56,7 @@ INSTALLED_APPS = [
     'dj_rest_auth.registration',
     'allauth.account',
     'allauth',
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -269,5 +271,12 @@ STATIC_URL = 'static/'
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+DEFAULT_FILE_STORAGE = 'storages.backends.gcloud.GoogleCloudStorage'
+GS_BUCKET_NAME = 'print-it'
+GS_LOCATION = 'Printit-Shop-photo/'
+GS_CREDENTIALS_FILE_PATH = os.path.join(BASE_DIR, 'secrets', 'printit-444813-da20400cf98c.json')
+GS_CREDENTIALS = service_account.Credentials.from_service_account_file(GS_CREDENTIALS_FILE_PATH)
+
+MEDIA_URL = f'https://storage.googleapis.com/{GS_BUCKET_NAME}/'

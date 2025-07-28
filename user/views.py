@@ -19,7 +19,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 import requests
 from .services.user_services import UserService
 from django.contrib.postgres.search import SearchVector
-from shops.views import getList
+from shops.support import get_image_metadata, get_list,get_shop
 from shops.models import Shop
 from django.contrib.gis.db.models.functions import Distance
 from django.contrib.gis.geos import Point 
@@ -263,7 +263,7 @@ class SearchShopView(APIView):
                 search=SearchVector("name","location__address")
                 ).annotate(distance = Distance('location__geometry', user_location)).filter(search=searchStirng).values('id', 'name', 'rating', 'location__address', 'images__images', 'distance_km') 
             
-            shop_list = getList(shops) 
+            shop_list = get_list(shops) 
             return Response({'shop_list':shop_list},status=status.HTTP_200_OK) 
         
         except Exception as e: 

@@ -6,3 +6,5 @@ venv
 shops/services/__pycache__
 user/services/__pycache__
 .vscode
+
+secrets
