@@ -25,7 +25,8 @@ from django.db import transaction
 from django.db.models import F, ExpressionWrapper, FloatField
 import time
 from rest_framework.parsers import MultiPartParser
-from .support import get_image_metadata, get_list, get_shop
+from .support import get_image_metadata, get_list, get_shop,parse_path
+
 # Create your views here.
 class RegisterShopView(APIView):
     
@@ -171,28 +172,30 @@ class AddImagesView(APIView):
     
     def post(self,request):
         
-        image = request.FILES.getlist('image')
-        
-        if not image:
-            return Response({"message":"images required to store"},status=status.HTTP_400_BAD_REQUEST)
+        imageList = request.FILES.getlist('image')
+        if not imageList or len(imageList)>1:
+            return Response({"message":"image is missing or more than one image"},status=status.HTTP_400_BAD_REQUEST)
         
         shop = ShopService.get_shop_by_id(request.user.id)
         if shop is None:
             return Response({'message':'shop doesnt exist !!!'},status=status.HTTP_200_OK)
     
         try:
+            image = imageList[0]
+            imagePath = parse_path(image, shop.id)
             metadata = get_image_metadata(image)
             image_instance = Images.objects.create(
-                image = image,
+                image = imagePath,
                 width = metadata['width'],
                 height = metadata['height'],
                 format = metadata['format'],
                 content_type = metadata['content_type'],
-                file_size = metadata['file_size']
+                file_size = metadata['file_size'],
+                shop_id = shop.id
             )
-            shop.images = image_instance
-            shop.save()
-            serializer = ImageSerializer(image_instance,many=True)
+            serializer = ImageSerializer(image_instance)
+            image_instance.file_location = imagePath
+            image_instance.save()
             return Response({'message':'images added successfully!!!','data':serializer.data},status=status.HTTP_200_OK)
     
         except Exception as e:
@@ -271,6 +274,24 @@ class GetShopView(APIView):
         except Exception as e:
             return Response({'message':'error occured','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+class GetImages(APIView):
+    
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        
+        shopId = request.user.id
+        if not shopId:
+            return Response({"message":"Need shop id"},status=status.HTTP_400_BAD_REQUEST)
+        
+        try:
+            shop_images = Images.objects.filter(shop_id = shopId)
+            serializer = ImageSerializer(shop_images,many=True)
+            return Response({"images":serializer.data},status=status.HTTP_200_OK)
+        except Exception as e:
+            return Response({'message':'error occured','error':str(e)},status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class GetShopListView(APIView):
     

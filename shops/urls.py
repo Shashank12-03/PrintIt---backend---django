@@ -8,7 +8,8 @@ from .views import (
     AddShopDetailedView,
     SignInView,
     SignoutView,
-    VerifyShopView
+    VerifyShopView,
+    GetImages
 )
 from django.urls import path
 
@@ -23,4 +24,5 @@ urlpatterns = [
     path("get-shop/<int:id>", GetShopView.as_view()),
     path("get-shops", GetShopListView.as_view()),
     path('verify-shop', VerifyShopView.as_view()),
+    path('shop-images',GetImages.as_view())
 ]

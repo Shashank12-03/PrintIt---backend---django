@@ -1,5 +1,8 @@
 from .services.shop_services import ShopService 
 from PIL import Image
+import os
+import datetime
+from .storage import ShopImageStorage
 
 def get_shop(id):
         shop = ShopService.get_shop_by_id(id)
@@ -57,3 +60,15 @@ def get_image_metadata(file):
     
         
     return data
+
+def parse_path(file, shopId):
+    
+    timestamp = str(datetime.datetime.now().strftime("%Y%m%d%H%M%S"))
+    filename = f'shop_{shopId}_{timestamp}' 
+    folder = f'shop{shopId}'
+    path =  f'{folder}/{filename}'
+    
+    gcp = ShopImageStorage()
+    
+    gcp_path = gcp.save(path,file)
+    return gcp_path
